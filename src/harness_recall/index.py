@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from pathlib import Path
 
 from harness_recall.ir import Session
@@ -9,8 +10,8 @@ from harness_recall.ir import Session
 class SessionIndex:
     def __init__(self, db_path: Path | str):
         self.db_path = str(db_path)
+        self._local = threading.local()
         self._init_db()
-        self._conn = self._create_connection()
 
     def _init_db(self):
         conn = self._create_connection()
@@ -85,17 +86,25 @@ class SessionIndex:
         conn.close()
 
     def _create_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
     def _get_conn(self) -> sqlite3.Connection:
-        return self._conn
+        """Get a thread-local connection. Each thread gets its own."""
+        conn = getattr(self._local, 'conn', None)
+        if conn is None:
+            conn = self._create_connection()
+            self._local.conn = conn
+        return conn
 
     def close(self) -> None:
-        self._conn.close()
+        conn = getattr(self._local, 'conn', None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
 
     def add_session(self, session: Session) -> None:
         conn = self._get_conn()
