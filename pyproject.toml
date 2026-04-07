@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "harness-recall"
-version = "1.1.3"
+version = "1.2.0"
 description = "Universal CLI for exporting and searching AI coding sessions"
 readme = "README.md"
 license = "MIT"

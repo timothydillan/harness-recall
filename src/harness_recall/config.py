@@ -1,16 +1,39 @@
 from __future__ import annotations
 
+import os
+import sys
 import tomllib
 from pathlib import Path
 
 
 DEFAULT_CONFIG_DIR = Path.home() / ".harness-recall"
 
-DEFAULT_SOURCE_PATHS = {
-    "codex": ["~/.codex/sessions/"],
-    "claude-code": ["~/.claude/projects/"],
-    "cursor": ["~/Library/Application Support/Cursor/User/globalStorage/"],
-}
+
+def _get_default_source_paths() -> dict[str, list[str]]:
+    """Return platform-aware default session paths for all sources."""
+    paths: dict[str, list[str]] = {
+        "codex": ["~/.codex/sessions/"],
+        "claude-code": ["~/.claude/projects/"],
+    }
+
+    if sys.platform == "darwin":
+        paths["cursor"] = [
+            "~/Library/Application Support/Cursor/User/globalStorage/"
+        ]
+    elif sys.platform == "win32":
+        appdata = os.environ.get(
+            "APPDATA", str(Path.home() / "AppData" / "Roaming")
+        )
+        paths["cursor"] = [
+            str(Path(appdata) / "Cursor" / "User" / "globalStorage")
+        ]
+    else:  # Linux and other Unix-like
+        paths["cursor"] = ["~/.config/Cursor/User/globalStorage/"]
+
+    return paths
+
+
+DEFAULT_SOURCE_PATHS = _get_default_source_paths()
 
 
 class Config:

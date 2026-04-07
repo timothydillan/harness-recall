@@ -5,6 +5,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from harness_recall.config import DEFAULT_SOURCE_PATHS
 from harness_recall.ir import Session, Turn, ToolCall, TokenUsage
 from harness_recall.parsers.base import BaseParser
 from harness_recall.parsers import register_parser
@@ -12,7 +13,9 @@ from harness_recall.parsers import register_parser
 
 class CursorParser(BaseParser):
     name = "cursor"
-    default_paths = ["~/Library/Application Support/Cursor/User/globalStorage/"]
+    default_paths = DEFAULT_SOURCE_PATHS.get(
+        "cursor", ["~/Library/Application Support/Cursor/User/globalStorage/"]
+    )
     file_pattern = "state.vscdb"
 
     def parse(self, file_path: Path) -> Session:

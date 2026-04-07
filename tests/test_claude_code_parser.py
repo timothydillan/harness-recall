@@ -93,3 +93,19 @@ def test_discover_default_paths(tmp_path):
     parser = ClaudeCodeParser()
     files = parser.discover(paths=[str(tmp_path / ".claude" / "projects")])
     assert len(files) == 1
+
+
+def test_discover_excludes_subagent_files(tmp_path):
+    """Subagent files should be excluded regardless of OS path separator."""
+    project_dir = tmp_path / ".claude" / "projects" / "my-project"
+    project_dir.mkdir(parents=True)
+    (project_dir / "session123.jsonl").write_text("{}")
+
+    subagent_dir = project_dir / "subagents"
+    subagent_dir.mkdir()
+    (subagent_dir / "agent-abc.jsonl").write_text("{}")
+
+    parser = ClaudeCodeParser()
+    files = parser.discover(paths=[str(tmp_path / ".claude" / "projects")])
+    assert len(files) == 1
+    assert "subagents" not in str(files[0].name)

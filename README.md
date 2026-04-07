@@ -47,12 +47,14 @@ Exported: ./exports/019cbc4c-fix-auth-middleware.html
 
 ## Supported Sources
 
-| Source      | Session Location                                    | Status   |
-|-------------|-----------------------------------------------------|----------|
-| Codex       | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`     | Supported |
-| Claude Code | `~/.claude/projects/{project-slug}/{session}.jsonl` | Supported |
-| Cursor      | `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` | Supported |
-| Copilot     | —                                                   | Planned  |
+| Source      | macOS                                                 | Linux                                            | Windows                                            | Status    |
+|-------------|-------------------------------------------------------|--------------------------------------------------|----------------------------------------------------|-----------|
+| Codex       | `~/.codex/sessions/`                                 | `~/.codex/sessions/`                             | `~\.codex\sessions\`                               | Supported |
+| Claude Code | `~/.claude/projects/`                                | `~/.claude/projects/`                            | `~\.claude\projects\`                              | Supported |
+| Cursor      | `~/Library/Application Support/Cursor/User/globalStorage/` | `~/.config/Cursor/User/globalStorage/`      | `%APPDATA%\Cursor\User\globalStorage\`             | Supported |
+| Copilot     | —                                                     | —                                                | —                                                  | Planned   |
+
+Paths are auto-detected per platform. Override them in `~/.harness-recall/config.toml` if your installation uses a non-standard location.
 
 ## Commands
 

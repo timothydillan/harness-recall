@@ -22,7 +22,7 @@ class ClaudeCodeParser(BaseParser):
         all_files = super().discover(paths)
         if self.include_subagents:
             return all_files
-        return [f for f in all_files if "/subagents/" not in str(f)]
+        return [f for f in all_files if "subagents" not in f.parts]
 
     def parse(self, file_path: Path) -> Session:
         lines = file_path.read_bytes().split(b"\n")
