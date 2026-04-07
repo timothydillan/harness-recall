@@ -181,7 +181,7 @@ def _build_preview_content(session: dict, turns: list[dict], tool_calls_by_turn:
 # ---------------------------------------------------------------------------
 
 class ExportModal(ModalScreen[str | None]):
-    """Modal dialog to pick export format."""
+    """Modal dialog to pick export format. Dismisses on selection."""
 
     DEFAULT_CSS = f"""
     ExportModal {{
@@ -213,8 +213,9 @@ class ExportModal(ModalScreen[str | None]):
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
-        Binding("enter", "confirm", "Confirm"),
     ]
+
+    FMT_MAP = {"fmt-markdown": "markdown", "fmt-html": "html", "fmt-json": "json"}
 
     def compose(self) -> ComposeResult:
         with Container(id="export-dialog"):
@@ -225,20 +226,18 @@ class ExportModal(ModalScreen[str | None]):
                 RadioButton("JSON", id="fmt-json"),
                 id="format-picker",
             )
-            yield Label("Enter/click to confirm  Esc to cancel", id="export-hint")
+            yield Label("Select a format  Esc to cancel", id="export-hint")
 
     def action_cancel(self) -> None:
         self.dismiss(None)
 
-    def action_confirm(self) -> None:
-        try:
-            rs: RadioSet = self.query_one("#format-picker", RadioSet)
-        except NoMatches:
-            self.dismiss(None)
-            return
-        idx = rs.pressed_index
-        fmt_map = {0: "markdown", 1: "html", 2: "json"}
-        self.dismiss(fmt_map.get(idx, "markdown"))
+    @on(RadioSet.Changed, "#format-picker")
+    def on_format_changed(self, event: RadioSet.Changed) -> None:
+        """Dismiss immediately when user selects a format."""
+        if event.pressed is not None:
+            btn_id = event.pressed.id or ""
+            fmt = self.FMT_MAP.get(btn_id, "markdown")
+            self.dismiss(fmt)
 
 
 # ---------------------------------------------------------------------------
@@ -815,6 +814,7 @@ class HarnessRecallApp(App):
     def _do_export(self, session: dict | None, fmt: str) -> None:
         if session is None:
             return
+        self.call_from_thread(self._notify, f"Exporting as {fmt}...")
         try:
             from harness_recall.renderers import get_renderer
             from harness_recall.parsers import get_all_parsers
@@ -829,7 +829,18 @@ class HarnessRecallApp(App):
                 )
                 return
 
-            parsed_session = parser.parse(source_file)
+            # Use parse_all + ID matching for multi-session files (e.g., Cursor)
+            sessions_parsed = parser.parse_all(source_file)
+            parsed_session = None
+            for sp in sessions_parsed:
+                if sp.id == session["id"]:
+                    parsed_session = sp
+                    break
+            if parsed_session is None:
+                parsed_session = sessions_parsed[0] if sessions_parsed else None
+            if parsed_session is None:
+                self.call_from_thread(self._notify, "Could not parse session")
+                return
             content = renderer.render(parsed_session)
             safe_id = session["id"][:8]
             title = session.get("title") or session["source"]
