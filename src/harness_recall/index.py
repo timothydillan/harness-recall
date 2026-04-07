@@ -171,6 +171,9 @@ class SessionIndex:
             query += " AND started_at >= ?"
             params.append(after)
         if before:
+            # Append end-of-day time if only a date was provided
+            if len(before) == 10:  # YYYY-MM-DD format
+                before = before + "T23:59:59"
             query += " AND started_at <= ?"
             params.append(before)
         if project:
@@ -206,6 +209,9 @@ class SessionIndex:
             sql += " AND s.started_at >= ?"
             params.append(after)
         if before:
+            # Append end-of-day time if only a date was provided
+            if len(before) == 10:  # YYYY-MM-DD format
+                before = before + "T23:59:59"
             sql += " AND s.started_at <= ?"
             params.append(before)
         sql += " ORDER BY rank LIMIT ?"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from rich.console import Console
 from rich.panel import Panel
+from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 from rich.markdown import Markdown
@@ -14,21 +15,36 @@ ROLE_STYLES = {
     "system": "bold yellow",
 }
 
+SOURCE_COLORS = {
+    "codex": "bright_magenta",      # violet-ish
+    "claude-code": "dark_orange",    # orange
+    "cursor": "dodger_blue2",        # blue
+}
+
+
+def print_header(console: Console) -> None:
+    from harness_recall import __version__
+    console.print(f"[dim]harness-recall v{__version__}[/dim]")
+    console.print()
+
 
 def format_session_list(console: Console, sessions: list[dict]) -> None:
+    print_header(console)
+
     if not sessions:
         console.print("[dim]No sessions found.[/dim]")
         return
 
     table = Table(box=box.SIMPLE_HEAVY, show_edge=False, pad_edge=False)
     table.add_column("ID", style="dim", max_width=10)
-    table.add_column("Source", style="magenta")
+    table.add_column("Source")
     table.add_column("Date", style="cyan")
     table.add_column("Model", style="dim")
     table.add_column("Title", max_width=60)
 
     for s in sessions:
         short_id = s["id"][:8]
+        source = s.get("source", "")
         date = s["started_at"][:10] if s.get("started_at") else ""
         model = s.get("model") or ""
         if len(model) > 20:
@@ -36,7 +52,7 @@ def format_session_list(console: Console, sessions: list[dict]) -> None:
         title = s.get("title") or ""
         if len(title) > 60:
             title = title[:57] + "..."
-        table.add_row(short_id, s.get("source", ""), date, model, title)
+        table.add_row(short_id, Text(source, style=SOURCE_COLORS.get(source, "magenta")), date, model, title)
 
     console.print(table)
 
@@ -104,6 +120,7 @@ def _fmt_tokens(n: int) -> str:
 
 def format_stats(console: Console, stats: dict) -> None:
     """Render a polished stats view using rich."""
+    print_header(console)
     total_sessions = stats.get("total_sessions", 0)
     total_turns = stats.get("total_turns", 0)
     total_input = stats.get("total_input_tokens", 0)
@@ -143,8 +160,12 @@ def format_stats(console: Console, stats: dict) -> None:
                             show_edge=False, pad_edge=False)
         month_table.add_column("Month", style="cyan")
         month_table.add_column("Sessions", justify="right")
-        for entry in by_month:
-            month_table.add_row(entry["month"], str(entry["count"]))
+        month_table.add_column("Bar")
+        max_count = max(m["count"] for m in by_month) if by_month else 1
+        for m in by_month:
+            bar_width = int((m["count"] / max_count) * 20)
+            bar = "█" * bar_width
+            month_table.add_row(m["month"], str(m["count"]), Text(bar, style="cyan"))
         console.print(month_table)
         console.print()
 
@@ -190,12 +211,16 @@ def format_search_results(console: Console, results: list[dict]) -> None:
         return
 
     seen_sessions = set()
+    deduped = []
     for r in results:
         sid = r["session_id"]
         if sid in seen_sessions:
             continue
         seen_sessions.add(sid)
+        deduped.append(r)
 
+    for i, r in enumerate(deduped):
+        sid = r["session_id"]
         short_id = sid[:8]
         source = r.get("source", "")
         date = r.get("started_at", "")[:10]
@@ -207,3 +232,5 @@ def format_search_results(console: Console, results: list[dict]) -> None:
         console.print(f"  [dim]{short_id}[/dim]  [magenta]{source}[/magenta]  [cyan]{date}[/cyan]  {title}")
         console.print(f"    {snippet}")
         console.print()
+        if i < len(deduped) - 1:
+            console.print(Rule(style="dim"))

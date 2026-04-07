@@ -17,10 +17,9 @@ def nl2br(value):
     return Markup(escape(value).replace('\n', Markup('<br>\n')))
 
 
-# Template directory — check multiple locations
+# Template directory
 _TEMPLATE_DIRS = [
-    Path(__file__).parent / "templates",  # inside package: src/harness_recall/templates/
-    Path(__file__).parent.parent.parent.parent / "templates",  # development: repo root templates/
+    Path(__file__).parent.parent / "templates",  # inside package: src/harness_recall/templates/
 ]
 
 

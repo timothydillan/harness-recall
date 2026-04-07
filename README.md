@@ -1,6 +1,6 @@
 # harness-recall
 
-Universal CLI for exporting and searching AI coding sessions from Codex and Claude Code.
+Universal CLI for exporting and searching AI coding sessions from Codex, Claude Code, and Cursor.
 
 ![PyPI](https://img.shields.io/pypi/v/harness-recall) ![Python](https://img.shields.io/pypi/pyversions/harness-recall) ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -10,7 +10,7 @@ Universal CLI for exporting and searching AI coding sessions from Codex and Clau
 
 harness-recall (`hrc`) parses local JSONL session files from AI coding tools, normalizes them into a common format, and indexes them with SQLite + FTS5 full-text search. You can list recent sessions, search across all of them, view sessions in the terminal, and export to Markdown, HTML, or JSON.
 
-Codex and Claude Code are supported in v1. The parser interface is designed to be extended — adding Cursor, Copilot, or Aider support means writing one new file.
+Codex, Claude Code, and Cursor are supported in v1.1. The parser interface is designed to be extended — adding Copilot or Aider support means writing one new file.
 
 ## Installation
 
@@ -99,7 +99,7 @@ hrc export 019cbc4c                    # Markdown (default)
 hrc export 019cbc4c --format html      # styled HTML
 hrc export 019cbc4c --format json      # normalized IR as JSON
 hrc export 019cbc4c -o ./exports/      # specify output directory
-hrc export --all --format md           # bulk export all sessions
+hrc export --all --format markdown     # bulk export all sessions
 hrc export --source codex -o ./        # export all Codex sessions
 ```
 
@@ -112,6 +112,24 @@ hrc index             # index new and changed sessions only
 hrc index --rebuild   # full re-index from scratch
 hrc index --stats     # show index statistics
 ```
+
+### Browse (Interactive TUI)
+
+```bash
+hrc browse
+```
+
+Interactive terminal UI for browsing sessions. Features live search, session preview, source filtering, and export.
+
+Key bindings: `↑↓`/`jk` navigate, `Enter` expand, `/` search, `e` export, `f` filter source, `q` quit.
+
+### Stats
+
+```bash
+hrc stats
+```
+
+Show session statistics: counts by source, sessions by month, top projects, models used, and token usage summary.
 
 ### `hrc config`
 

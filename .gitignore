@@ -8,3 +8,7 @@ build/
 .pytest_cache/
 .DS_Store
 .gstack/
+# Chat history files
+*-chat-history.md
+# Duplicate template directory (keep only src/harness_recall/templates/)
+/templates/

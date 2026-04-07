@@ -256,6 +256,7 @@ def browse(config_dir):
     from harness_recall.tui import HarnessRecallApp
     app = HarnessRecallApp(idx)
     app.run()
+    idx.close()
 
 
 @main.command()
