@@ -9,6 +9,7 @@ DEFAULT_CONFIG_DIR = Path.home() / ".harness-recall"
 DEFAULT_SOURCE_PATHS = {
     "codex": ["~/.codex/sessions/"],
     "claude-code": ["~/.claude/projects/"],
+    "cursor": ["~/Library/Application Support/Cursor/User/globalStorage/"],
 }
 
 

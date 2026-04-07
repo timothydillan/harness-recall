@@ -51,7 +51,7 @@ Exported: ./exports/019cbc4c-fix-auth-middleware.html
 |-------------|-----------------------------------------------------|----------|
 | Codex       | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`     | Supported |
 | Claude Code | `~/.claude/projects/{project-slug}/{session}.jsonl` | Supported |
-| Cursor      | —                                                   | Planned  |
+| Cursor      | `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` | Supported |
 | Copilot     | —                                                   | Planned  |
 
 ## Commands

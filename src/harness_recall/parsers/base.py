@@ -18,6 +18,10 @@ class BaseParser(ABC):
         """Parse a single source file into an IR Session."""
         ...
 
+    def parse_all(self, file_path: Path) -> list[Session]:
+        """Parse a file that may contain multiple sessions. Default: wraps parse()."""
+        return [self.parse(file_path)]
+
     def discover(self, paths: list[str] | None = None) -> list[Path]:
         """Find all session files in given or default paths."""
         search_paths = paths or self.default_paths

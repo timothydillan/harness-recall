@@ -29,6 +29,10 @@ def _auto_register() -> None:
         from harness_recall.parsers import claude_code  # noqa: F401
     except ImportError:
         pass
+    try:
+        from harness_recall.parsers import cursor  # noqa: F401
+    except ImportError:
+        pass
 
 
 _auto_register()

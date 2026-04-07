@@ -56,9 +56,10 @@ def _auto_index(config: Config, index: SessionIndex) -> int:
         for f in files:
             if index.needs_reindex(str(f), f.stat().st_mtime):
                 try:
-                    session = parser.parse(f)
-                    index.add_session(session)
-                    count += 1
+                    sessions = parser.parse_all(f)
+                    for session in sessions:
+                        index.add_session(session)
+                    count += len(sessions)
                 except Exception as e:
                     console.print(f"[dim red]Skipped {f.name}: {e}[/dim red]")
     return count
