@@ -12,3 +12,6 @@ build/
 *-chat-history.md
 # Duplicate template directory (keep only src/harness_recall/templates/)
 /templates/
+# Internal plans and specs
+docs/plans/
+docs/specs/
