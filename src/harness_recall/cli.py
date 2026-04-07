@@ -279,10 +279,13 @@ def index(rebuild, stats, config_dir):
         return
 
     if rebuild:
-        # Delete and recreate
+        # Close existing connection, delete DB files, recreate
+        idx.close()
         db = Path(config.db_path)
-        if db.exists():
-            db.unlink()
+        for suffix in ("", "-wal", "-shm"):
+            p = db.parent / (db.name + suffix)
+            if p.exists():
+                p.unlink()
         idx = _get_index(config)
 
     with _maybe_progress("Indexing sessions..."):
