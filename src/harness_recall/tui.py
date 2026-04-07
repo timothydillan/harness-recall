@@ -505,7 +505,7 @@ class HarnessRecallApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Quit", priority=True),
-        Binding("tab", "focus_sessions", "Sessions", show=True),
+        Binding("tab", "focus_sessions", "Sessions", show=True, priority=True),
         Binding("slash", "focus_search", "Search", show=True),
         Binding("f", "cycle_filter", "Filter", show=True),
         Binding("e", "export_session", "Export", show=True),
@@ -548,7 +548,7 @@ class HarnessRecallApp(App):
 
         with Horizontal(id="main-row"):
             with Vertical(id="session-panel"):
-                yield Label("Sessions", id="session-panel-title")
+                yield Label(f"Sessions  [{STONE_600}]Tab to navigate[/{STONE_600}]", id="session-panel-title")
                 yield ListView(id="session-list")
 
             with Vertical(id="preview-panel"):
@@ -657,6 +657,11 @@ class HarnessRecallApp(App):
         self._debounce_timer = None
         self._load_sessions()
 
+    @on(ListView.Selected, "#session-list")
+    def on_list_selected(self, event: ListView.Selected) -> None:
+        """Enter pressed on a session — expand to full view."""
+        self.action_enter_action()
+
     @on(ListView.Highlighted, "#session-list")
     def on_list_highlighted(self, event: ListView.Highlighted) -> None:
         if event.item is None:
@@ -704,6 +709,11 @@ class HarnessRecallApp(App):
 
     def action_enter_action(self) -> None:
         """Expand selected session to full scrollable content."""
+        # If no session selected, try to get from current list index
+        if self._selected_session is None:
+            lv = self.query_one("#session-list", ListView)
+            if lv.index is not None and self._sessions and lv.index < len(self._sessions):
+                self._selected_session = self._sessions[lv.index]
         if self._selected_session is None:
             return
         self._full_view_active = True
