@@ -54,7 +54,8 @@ class Session:
 
     def generate_title(self) -> str:
         """Auto-generate title from first user message, or fallback to source + date."""
-        _SKIP_PREFIXES = (
+        # Only skip system-injected messages, not real user prompts
+        _SYSTEM_PREFIXES = (
             "# Context from my IDE",
             "<system_instruction>",
             "<system-reminder>",
@@ -63,17 +64,13 @@ class Session:
             "<app-context>",
             "<local-command-caveat>",
             "<claude-mem-context>",
-            "You are a Claude-Mem",
-            "You are the best",
-            "You are an expert",
+            "<command-name>",
+            "<task-notification>",
         )
         for turn in self.turns:
             if turn.role == "user" and turn.content:
                 text = turn.content.strip()
-                if text.startswith(_SKIP_PREFIXES):
-                    continue
-                # Skip messages that are mostly XML/HTML tags
-                if text.startswith("<") and ">" in text[:50]:
+                if text.startswith(_SYSTEM_PREFIXES):
                     continue
                 # Skip very short messages (likely greetings or commands)
                 if len(text) < 5:

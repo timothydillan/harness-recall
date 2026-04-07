@@ -100,7 +100,7 @@ def main():
 
 
 @main.command()
-@click.option("--source", help="Filter by source (codex, claude-code)")
+@click.option("--source", help="Filter by source (codex, claude-code, cursor)")
 @click.option("--after", help="Show sessions after date (YYYY-MM-DD)")
 @click.option("--before", help="Show sessions before date (YYYY-MM-DD)")
 @click.option("--project", help="Filter by project directory")
@@ -165,11 +165,14 @@ def show(session_id, full, turns, config_dir):
     tool_calls = index.get_tool_calls(session["id"])
 
     if turns:
-        # Parse turn range like "1-5"
-        parts = turns.split("-")
-        start = int(parts[0]) - 1
-        end = int(parts[1]) if len(parts) > 1 else start + 1
-        turn_rows = turn_rows[start:end]
+        try:
+            parts = turns.split("-")
+            start = int(parts[0]) - 1
+            end = int(parts[1]) if len(parts) > 1 else start + 1
+            turn_rows = turn_rows[start:end]
+        except (ValueError, IndexError):
+            console.print(f"[red]Invalid turn range: {turns}. Use format like 1-5 or 3.[/red]")
+            raise SystemExit(1)
 
     format_session_detail(console, session, turn_rows, tool_calls, full=full)
 
@@ -235,7 +238,18 @@ def _export_one(session_meta, parsers, renderer, out_dir):
     if not parser or not source_file.exists():
         console.print(f"[yellow]Skipped {session_meta['id']}: source file not found[/yellow]")
         return None
-    session = parser.parse(source_file)
+    # For multi-session files (e.g., Cursor), find the matching session by ID
+    sessions = parser.parse_all(source_file)
+    session = None
+    for s in sessions:
+        if s.id == session_meta["id"]:
+            session = s
+            break
+    if session is None:
+        session = sessions[0] if sessions else None
+    if session is None:
+        console.print(f"[yellow]Skipped {session_meta['id']}: could not parse session[/yellow]")
+        return None
     content = renderer.render(session)
     safe_id = session.id[:8]
     title_slug = re.sub(r'[^a-z0-9]+', '-', (session.title or session.source).lower()).strip('-')[:50]
