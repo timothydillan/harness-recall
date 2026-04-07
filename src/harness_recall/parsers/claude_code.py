@@ -15,6 +15,14 @@ class ClaudeCodeParser(BaseParser):
     name = "claude-code"
     default_paths = ["~/.claude/projects/"]
     file_pattern = "**/*.jsonl"
+    include_subagents: bool = False
+
+    def discover(self, paths: list[str] | None = None) -> list[Path]:
+        """Find session files, excluding subagent files by default."""
+        all_files = super().discover(paths)
+        if self.include_subagents:
+            return all_files
+        return [f for f in all_files if "/subagents/" not in str(f)]
 
     def parse(self, file_path: Path) -> Session:
         lines = file_path.read_bytes().split(b"\n")

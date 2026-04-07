@@ -258,7 +258,10 @@ def index(rebuild, stats, config_dir):
         s = idx.detailed_stats()
         format_stats(console, s)
         db_size = Path(config.db_path).stat().st_size if Path(config.db_path).exists() else 0
-        console.print(f"[dim]DB size: {db_size / 1024:.1f} KB[/dim]")
+        if db_size >= 1024 * 1024:
+            console.print(f"[dim]DB size: {db_size / 1024 / 1024:.1f} MB[/dim]")
+        else:
+            console.print(f"[dim]DB size: {db_size / 1024:.1f} KB[/dim]")
         return
 
     if rebuild:
@@ -297,7 +300,10 @@ def stats(config_dir):
     s = idx.detailed_stats()
     format_stats(console, s)
     db_size = Path(config.db_path).stat().st_size if Path(config.db_path).exists() else 0
-    console.print(f"[dim]DB size: {db_size / 1024:.1f} KB[/dim]")
+    if db_size >= 1024 * 1024:
+        console.print(f"[dim]DB size: {db_size / 1024 / 1024:.1f} MB[/dim]")
+    else:
+        console.print(f"[dim]DB size: {db_size / 1024:.1f} KB[/dim]")
 
 
 @main.command()

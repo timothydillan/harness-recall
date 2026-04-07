@@ -102,8 +102,9 @@ class SessionIndex:
         # Remove existing session data if re-indexing
         self._remove_session_data(conn, session.id)
 
-        total_input = sum(t.token_usage.input_tokens for t in session.turns if t.token_usage)
-        total_output = sum(t.token_usage.output_tokens for t in session.turns if t.token_usage)
+        # Use max (not sum) because some sources report cumulative totals per turn
+        total_input = max((t.token_usage.input_tokens for t in session.turns if t.token_usage), default=0)
+        total_output = max((t.token_usage.output_tokens for t in session.turns if t.token_usage), default=0)
 
         conn.execute("""
             INSERT INTO sessions (id, source, source_file, source_file_mtime,
