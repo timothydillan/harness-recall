@@ -88,18 +88,20 @@ def _session_title(s: dict) -> str:
 # Session item label builder
 # ---------------------------------------------------------------------------
 
-def _build_session_label(s: dict) -> str:
+def _build_session_label(s: dict, selected: bool = False) -> str:
     """Build a rich-markup string for a session list item."""
     sid = _short_id(s["id"])
     src = s.get("source", "")
     src_color = _source_color(src)
     date = _date_str(s.get("started_at"))
     title = _session_title(s)
+    pointer = f"[{TEAL_400}]▸[/{TEAL_400}] " if selected else "  "
+    title_style = f"bold {STONE_100}" if selected else STONE_400
     return (
-        f"[bold]{sid}[/bold]  "
+        f"{pointer}[bold]{sid}[/bold]  "
         f"[{src_color}]{src}[/{src_color}]  "
         f"[{STONE_400}]{date}[/{STONE_400}]\n"
-        f"  [{STONE_400}]{title}[/{STONE_400}]"
+        f"    [{title_style}]{title}[/{title_style}]"
     )
 
 
@@ -274,6 +276,7 @@ class HelpModal(ModalScreen):
     ]
 
     HELP_TEXT = f"""\
+[{TEAL_400}]Tab[/{TEAL_400}]     Focus sessions list
 [{TEAL_400}]↑ / k[/{TEAL_400}]   Move up
 [{TEAL_400}]↓ / j[/{TEAL_400}]   Move down
 [{TEAL_400}]Enter[/{TEAL_400}]   Expand session (full view)
@@ -449,10 +452,12 @@ ListItem {{
     color: {STONE_100};
     padding: 0 1;
     height: auto;
+    border-left: solid {STONE_800};
 }}
 
 ListItem.--highlight {{
-    background: {TEAL_600};
+    background: #1a2f2e;
+    border-left: solid {TEAL_400};
 }}
 
 ListItem > Static {{
@@ -500,12 +505,13 @@ class HarnessRecallApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Quit", priority=True),
+        Binding("tab", "focus_sessions", "Sessions", show=True),
         Binding("slash", "focus_search", "Search", show=True),
-        Binding("f", "cycle_filter", "Filter source", show=True),
+        Binding("f", "cycle_filter", "Filter", show=True),
         Binding("e", "export_session", "Export", show=True),
-        Binding("question_mark", "show_help", "Help", show=True),
+        Binding("question_mark", "show_help", "?Help", show=True),
         Binding("escape", "escape_action", "Back", show=False),
-        Binding("enter", "enter_action", "Full view", show=True),
+        Binding("enter", "enter_action", "Expand", show=True),
         Binding("j", "move_down", "Down", show=False),
         Binding("k", "move_up", "Up", show=False),
     ]
@@ -606,8 +612,8 @@ class HarnessRecallApp(App):
             self._selected_session = None
             return
 
-        for s in sessions:
-            item = ListItem(Static(_build_session_label(s)))
+        for i, s in enumerate(sessions):
+            item = ListItem(Static(_build_session_label(s, selected=(i == 0))))
             lv.append(item)
 
         # Highlight first item
@@ -658,11 +664,19 @@ class HarnessRecallApp(App):
         lv = self.query_one("#session-list", ListView)
         idx = lv.index
         if idx is not None:
+            # Update pointer indicators on all items
+            for i, item in enumerate(lv.children):
+                if i < len(self._sessions):
+                    static = item.query_one(Static)
+                    static.update(_build_session_label(self._sessions[i], selected=(i == idx)))
             self._load_preview_for_index(idx)
 
     # ------------------------------------------------------------------
     # Key actions
     # ------------------------------------------------------------------
+
+    def action_focus_sessions(self) -> None:
+        self.query_one("#session-list", ListView).focus()
 
     def action_focus_search(self) -> None:
         self.query_one("#search-input", Input).focus()
