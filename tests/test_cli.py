@@ -125,6 +125,13 @@ def test_cli_list_before_filter(tmp_path):
     assert "test-be" not in result.output
 
 
+def test_cli_browse_help():
+    runner = CliRunner()
+    result = runner.invoke(main, ["browse", "--help"])
+    assert result.exit_code == 0
+    assert "Interactive" in result.output
+
+
 def test_full_workflow(tmp_path, fixtures_dir):
     """Integration test: index fixtures → list → search → export."""
     config_dir = tmp_path / "config"

@@ -248,6 +248,18 @@ def index(rebuild, stats, config_dir):
 
 @main.command()
 @click.option("--config-dir", hidden=True)
+def browse(config_dir):
+    """Interactive session browser."""
+    config = _get_config(config_dir)
+    idx = _get_index(config)
+    _auto_index(config, idx)
+    from harness_recall.tui import HarnessRecallApp
+    app = HarnessRecallApp(idx)
+    app.run()
+
+
+@main.command()
+@click.option("--config-dir", hidden=True)
 def stats(config_dir):
     """Show session statistics and usage summary."""
     config = _get_config(config_dir)
