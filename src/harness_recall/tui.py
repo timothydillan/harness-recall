@@ -848,7 +848,7 @@ class HarnessRecallApp(App):
             filename = f"{safe_id}-{title_slug}{renderer.file_extension}"
             out_path = Path.cwd() / filename
             out_path.write_text(content, encoding="utf-8")
-            self.call_from_thread(self._notify, f"Exported to {out_path.name}")
+            self.call_from_thread(self._notify, f"Exported to {out_path}")
         except Exception as exc:
             self.call_from_thread(self._notify, f"Export failed: {exc}")
 

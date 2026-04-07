@@ -133,7 +133,8 @@ def search(query, source, tool, after, before, limit, config_dir):
     """Full-text search across all sessions."""
     config = _get_config(config_dir)
     index = _get_index(config)
-    _auto_index(config, index)
+    with _maybe_progress("Checking for new sessions...", transient=True):
+        _auto_index(config, index)
     results = index.search(query, source=source, tool=tool, after=after, before=before, limit=limit)
     format_search_results(console, results)
 
@@ -147,7 +148,8 @@ def show(session_id, full, turns, config_dir):
     """Show a session in the terminal."""
     config = _get_config(config_dir)
     index = _get_index(config)
-    _auto_index(config, index)
+    with _maybe_progress("Checking for new sessions...", transient=True):
+        _auto_index(config, index)
 
     session = index.get_session(session_id)
     if not session:
@@ -188,7 +190,8 @@ def export(session_id, fmt, output_dir, export_all, source, config_dir):
     """Export session(s) to Markdown, HTML, or JSON."""
     config = _get_config(config_dir)
     index = _get_index(config)
-    _auto_index(config, index)
+    with _maybe_progress("Checking for new sessions...", transient=True):
+        _auto_index(config, index)
     renderer = get_renderer(fmt)
 
     if not session_id and not export_all and not source:
@@ -299,7 +302,14 @@ def browse(config_dir):
     """Interactive session browser."""
     config = _get_config(config_dir)
     idx = _get_index(config)
-    _auto_index(config, idx)
+
+    # Show progress during indexing before TUI takes over the terminal
+    with _maybe_progress("Preparing sessions...", transient=True):
+        new = _auto_index(config, idx)
+    if new:
+        console.print(f"[dim]Indexed {new} new session(s).[/dim]")
+    console.print("[dim]Launching browser...[/dim]")
+
     from harness_recall.tui import HarnessRecallApp
     app = HarnessRecallApp(idx)
     app.run()
