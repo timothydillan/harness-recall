@@ -334,6 +334,95 @@ hr.section-divider {
   text-underline-offset: 2px;
 }
 
+/* ── Tables (Markdown) ── */
+.turn-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75em 0;
+  font-size: 0.875rem;
+}
+
+.turn-content th,
+.turn-content td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.turn-content th {
+  background: var(--surface-alt);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.turn-content tr:hover {
+  background: var(--surface-alt);
+}
+
+/* ── Task lists ── */
+.turn-content ul.task-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.turn-content ul.task-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.turn-content ul.task-list input[type="checkbox"] {
+  accent-color: var(--accent);
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* ── Strikethrough ── */
+.turn-content del {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* ── Horizontal rules (in content) ── */
+.turn-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
+
+/* ── Images ── */
+.turn-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0.75em 0;
+}
+
+/* ── Footnotes ── */
+.turn-content .footnotes {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  margin-top: 1.5em;
+  padding-top: 0.75em;
+}
+
+.turn-content .footnotes ol {
+  padding-left: 1.25em;
+}
+
+/* ── Definition lists ── */
+.turn-content dt {
+  font-weight: 600;
+  margin-top: 0.5em;
+}
+
+.turn-content dd {
+  margin-left: 1.5em;
+  margin-bottom: 0.5em;
+  color: var(--text-muted);
+}
+
 /* ── Reasoning block ── */
 .reasoning-block {
   margin-top: 12px;
@@ -596,13 +685,13 @@ details.tool-call > summary:hover {
       </div>
       <div class="turn-body">
         {% if turn.content %}
-        <div class="turn-content">{{ turn.content | nl2br }}</div>
+        <div class="turn-content">{{ turn.content | render_markdown }}</div>
         {% endif %}
 
         {% if turn.reasoning %}
         <details class="reasoning-block">
           <summary>Thinking</summary>
-          <div class="reasoning-content">{{ turn.reasoning | nl2br }}</div>
+          <div class="reasoning-content">{{ turn.reasoning | render_markdown }}</div>
         </details>
         {% endif %}
 
