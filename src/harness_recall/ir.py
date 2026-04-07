@@ -54,9 +54,19 @@ class Session:
 
     def generate_title(self) -> str:
         """Auto-generate title from first user message, or fallback to source + date."""
+        # Prefixes that indicate IDE context preambles, not actual user questions
+        _CONTEXT_PREFIXES = (
+            "# Context from my IDE",
+            "<system_instruction>",
+            "<permissions instructions>",
+            "<environment_context>",
+            "<app-context>",
+        )
         for turn in self.turns:
             if turn.role == "user" and turn.content:
                 text = turn.content.strip()
+                if text.startswith(_CONTEXT_PREFIXES):
+                    continue
                 if len(text) > 80:
                     return text[:77] + "..."
                 return text

@@ -105,8 +105,8 @@ class CodexParser(BaseParser):
                         seq += 1
 
                 elif msg_type == "token_count":
-                    info = payload.get("info", {})
-                    total = info.get("total_token_usage", {})
+                    info = payload.get("info") or {}
+                    total = info.get("total_token_usage") or {}
                     last_token_usage = TokenUsage(
                         input_tokens=total.get("input_tokens", 0),
                         output_tokens=total.get("output_tokens", 0),
