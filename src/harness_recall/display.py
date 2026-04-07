@@ -93,6 +93,97 @@ def format_session_detail(console: Console, session: dict, turns: list[dict],
                 console.print()
 
 
+def _fmt_tokens(n: int) -> str:
+    """Format token count with K/M suffixes."""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K"
+    return str(n)
+
+
+def format_stats(console: Console, stats: dict) -> None:
+    """Render a polished stats view using rich."""
+    total_sessions = stats.get("total_sessions", 0)
+    total_turns = stats.get("total_turns", 0)
+    total_input = stats.get("total_input_tokens", 0)
+    total_output = stats.get("total_output_tokens", 0)
+
+    # Header panel
+    header_lines = [
+        f"[bold cyan]Sessions:[/bold cyan]      {total_sessions}",
+        f"[bold cyan]Turns:[/bold cyan]         {total_turns}",
+        f"[bold cyan]Input tokens:[/bold cyan]  {_fmt_tokens(total_input)}",
+        f"[bold cyan]Output tokens:[/bold cyan] {_fmt_tokens(total_output)}",
+    ]
+    console.print(Panel(
+        "\n".join(header_lines),
+        title="[bold]harness-recall — Session Statistics[/bold]",
+        border_style="cyan",
+        padding=(1, 2),
+    ))
+    console.print()
+
+    # Sessions by source
+    sources = stats.get("sources", {})
+    if sources:
+        src_table = Table(title="Sessions by Source", box=box.SIMPLE_HEAVY,
+                          show_edge=False, pad_edge=False)
+        src_table.add_column("Source", style="magenta")
+        src_table.add_column("Sessions", justify="right", style="cyan")
+        for src, count in sources.items():
+            src_table.add_row(src, str(count))
+        console.print(src_table)
+        console.print()
+
+    # Sessions by month (last 6)
+    by_month = stats.get("by_month", [])
+    if by_month:
+        month_table = Table(title="Sessions by Month (last 6)", box=box.SIMPLE_HEAVY,
+                            show_edge=False, pad_edge=False)
+        month_table.add_column("Month", style="cyan")
+        month_table.add_column("Sessions", justify="right")
+        for entry in by_month:
+            month_table.add_row(entry["month"], str(entry["count"]))
+        console.print(month_table)
+        console.print()
+
+    # Top projects
+    top_projects = stats.get("top_projects", [])
+    if top_projects:
+        proj_table = Table(title="Top Projects", box=box.SIMPLE_HEAVY,
+                           show_edge=False, pad_edge=False)
+        proj_table.add_column("Project", style="dim")
+        proj_table.add_column("Sessions", justify="right", style="cyan")
+        for entry in top_projects:
+            proj_table.add_row(entry["project_dir"], str(entry["count"]))
+        console.print(proj_table)
+        console.print()
+
+    # Models used
+    models_used = stats.get("models_used", {})
+    if models_used:
+        model_table = Table(title="Models Used", box=box.SIMPLE_HEAVY,
+                            show_edge=False, pad_edge=False)
+        model_table.add_column("Model", style="dim")
+        model_table.add_column("Sessions", justify="right", style="cyan")
+        for model, count in models_used.items():
+            model_table.add_row(model, str(count))
+        console.print(model_table)
+        console.print()
+
+    # Token summary footer (only if there are tokens)
+    if total_input or total_output:
+        total_tokens = total_input + total_output
+        console.print(
+            f"[dim]Token usage:[/dim] "
+            f"[green]{_fmt_tokens(total_input)}[/green] input + "
+            f"[yellow]{_fmt_tokens(total_output)}[/yellow] output = "
+            f"[bold]{_fmt_tokens(total_tokens)}[/bold] total"
+        )
+        console.print()
+
+
 def format_search_results(console: Console, results: list[dict]) -> None:
     if not results:
         console.print("[dim]No results found.[/dim]")

@@ -159,6 +159,7 @@ class SessionIndex:
         conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
 
     def list_sessions(self, source: str | None = None, after: str | None = None,
+                      before: str | None = None,
                       project: str | None = None, limit: int = 25) -> list[dict]:
         conn = self._get_conn()
         query = "SELECT * FROM sessions WHERE 1=1"
@@ -169,6 +170,9 @@ class SessionIndex:
         if after:
             query += " AND started_at >= ?"
             params.append(after)
+        if before:
+            query += " AND started_at <= ?"
+            params.append(before)
         if project:
             query += " AND project_dir LIKE ?"
             params.append(f"%{project}%")
@@ -178,7 +182,8 @@ class SessionIndex:
         return [dict(r) for r in rows]
 
     def search(self, query: str, source: str | None = None,
-               tool: str | None = None, limit: int = 25) -> list[dict]:
+               tool: str | None = None, after: str | None = None,
+               before: str | None = None, limit: int = 25) -> list[dict]:
         conn = self._get_conn()
         sql = """
             SELECT t.session_id, t.content, t.role, t.timestamp,
@@ -197,6 +202,12 @@ class SessionIndex:
         if tool:
             sql += " AND t.id IN (SELECT turn_id FROM tool_calls WHERE name = ?)"
             params.append(tool)
+        if after:
+            sql += " AND s.started_at >= ?"
+            params.append(after)
+        if before:
+            sql += " AND s.started_at <= ?"
+            params.append(before)
         sql += " ORDER BY rank LIMIT ?"
         params.append(limit)
         rows = conn.execute(sql, params).fetchall()
@@ -261,4 +272,56 @@ class SessionIndex:
             "total_turns": turns,
             "sources": sources,
             "db_size_bytes": db_size,
+        }
+
+    def detailed_stats(self) -> dict:
+        conn = self._get_conn()
+        total_sessions = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+        total_turns = conn.execute("SELECT COUNT(*) FROM turns").fetchone()[0]
+        total_input = conn.execute("SELECT COALESCE(SUM(total_input_tokens), 0) FROM sessions").fetchone()[0]
+        total_output = conn.execute("SELECT COALESCE(SUM(total_output_tokens), 0) FROM sessions").fetchone()[0]
+
+        sources = {}
+        for row in conn.execute("SELECT source, COUNT(*) FROM sessions GROUP BY source ORDER BY COUNT(*) DESC"):
+            sources[row[0]] = row[1]
+
+        by_month_rows = conn.execute("""
+            SELECT substr(started_at, 1, 7) as month, COUNT(*) as count
+            FROM sessions
+            GROUP BY month
+            ORDER BY month DESC
+            LIMIT 6
+        """).fetchall()
+        by_month = [{"month": row[0], "count": row[1]} for row in by_month_rows]
+        # Return in ascending order for display
+        by_month = list(reversed(by_month))
+
+        top_projects_rows = conn.execute("""
+            SELECT project_dir, COUNT(*) as count
+            FROM sessions
+            WHERE project_dir IS NOT NULL AND project_dir != ''
+            GROUP BY project_dir
+            ORDER BY count DESC
+            LIMIT 10
+        """).fetchall()
+        top_projects = [{"project_dir": row[0], "count": row[1]} for row in top_projects_rows]
+
+        models_used = {}
+        for row in conn.execute("""
+            SELECT model, COUNT(*) FROM sessions
+            WHERE model IS NOT NULL AND model != ''
+            GROUP BY model
+            ORDER BY COUNT(*) DESC
+        """):
+            models_used[row[0]] = row[1]
+
+        return {
+            "total_sessions": total_sessions,
+            "total_turns": total_turns,
+            "total_input_tokens": total_input,
+            "total_output_tokens": total_output,
+            "sources": sources,
+            "by_month": by_month,
+            "top_projects": top_projects,
+            "models_used": models_used,
         }

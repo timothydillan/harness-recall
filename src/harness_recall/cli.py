@@ -13,7 +13,7 @@ from harness_recall.config import Config
 from harness_recall.index import SessionIndex
 from harness_recall.parsers import get_all_parsers
 from harness_recall.renderers import get_renderer
-from harness_recall.display import format_session_list, format_session_detail, format_search_results
+from harness_recall.display import format_session_list, format_session_detail, format_search_results, format_stats
 
 console = Console()
 
@@ -74,10 +74,11 @@ def main():
 @main.command()
 @click.option("--source", help="Filter by source (codex, claude-code)")
 @click.option("--after", help="Show sessions after date (YYYY-MM-DD)")
+@click.option("--before", help="Show sessions before date (YYYY-MM-DD)")
 @click.option("--project", help="Filter by project directory")
 @click.option("--limit", default=25, help="Max results")
 @click.option("--config-dir", hidden=True, help="Override config directory")
-def list(source, after, project, limit, config_dir):
+def list(source, after, before, project, limit, config_dir):
     """List all indexed sessions."""
     config = _get_config(config_dir)
     index = _get_index(config)
@@ -88,7 +89,7 @@ def list(source, after, project, limit, config_dir):
     if new:
         console.print(f"[dim]Indexed {new} new session(s).[/dim]")
 
-    sessions = index.list_sessions(source=source, after=after, project=project, limit=limit)
+    sessions = index.list_sessions(source=source, after=after, before=before, project=project, limit=limit)
     format_session_list(console, sessions)
 
 
@@ -96,14 +97,16 @@ def list(source, after, project, limit, config_dir):
 @click.argument("query")
 @click.option("--source", help="Filter by source")
 @click.option("--tool", help="Filter by tool name")
+@click.option("--after", help="Show sessions after date (YYYY-MM-DD)")
+@click.option("--before", help="Show sessions before date (YYYY-MM-DD)")
 @click.option("--limit", default=25, help="Max results")
 @click.option("--config-dir", hidden=True, help="Override config directory")
-def search(query, source, tool, limit, config_dir):
+def search(query, source, tool, after, before, limit, config_dir):
     """Full-text search across all sessions."""
     config = _get_config(config_dir)
     index = _get_index(config)
     _auto_index(config, index)
-    results = index.search(query, source=source, tool=tool, limit=limit)
+    results = index.search(query, source=source, tool=tool, after=after, before=before, limit=limit)
     format_search_results(console, results)
 
 
@@ -224,12 +227,10 @@ def index(rebuild, stats, config_dir):
     idx = _get_index(config)
 
     if stats:
-        s = idx.stats()
-        console.print(f"Sessions: {s['total_sessions']}")
-        console.print(f"Turns: {s['total_turns']}")
-        for src, count in s.get("sources", {}).items():
-            console.print(f"  {src}: {count}")
-        console.print(f"DB size: {s['db_size_bytes'] / 1024:.1f} KB")
+        s = idx.detailed_stats()
+        format_stats(console, s)
+        db_size = Path(config.db_path).stat().st_size if Path(config.db_path).exists() else 0
+        console.print(f"[dim]DB size: {db_size / 1024:.1f} KB[/dim]")
         return
 
     if rebuild:
@@ -242,6 +243,20 @@ def index(rebuild, stats, config_dir):
     with _maybe_progress("Indexing sessions..."):
         new = _auto_index(config, idx)
     console.print(f"[green]Indexed {new} session(s).[/green]")
+
+
+@main.command()
+@click.option("--config-dir", hidden=True)
+def stats(config_dir):
+    """Show session statistics and usage summary."""
+    config = _get_config(config_dir)
+    idx = _get_index(config)
+    with _maybe_progress("Checking for new sessions...", transient=True):
+        _auto_index(config, idx)
+    s = idx.detailed_stats()
+    format_stats(console, s)
+    db_size = Path(config.db_path).stat().st_size if Path(config.db_path).exists() else 0
+    console.print(f"[dim]DB size: {db_size / 1024:.1f} KB[/dim]")
 
 
 @main.command()
