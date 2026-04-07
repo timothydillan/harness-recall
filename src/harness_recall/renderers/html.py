@@ -1,0 +1,43 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from jinja2 import Environment, FileSystemLoader
+
+from harness_recall.ir import Session
+from harness_recall.renderers.base import BaseRenderer
+from harness_recall.renderers import register_renderer
+
+
+# Template directory — check multiple locations
+_TEMPLATE_DIRS = [
+    Path(__file__).parent.parent.parent.parent / "templates",  # development: repo root
+    Path(__file__).parent / "templates",  # installed package fallback
+]
+
+
+class HtmlRenderer(BaseRenderer):
+    name = "html"
+    file_extension = ".html"
+
+    def __init__(self):
+        template_dir = None
+        for d in _TEMPLATE_DIRS:
+            if (d / "export.html").exists():
+                template_dir = d
+                break
+        if template_dir is None:
+            raise FileNotFoundError(
+                f"Could not find templates/export.html in: {_TEMPLATE_DIRS}"
+            )
+        self._env = Environment(
+            loader=FileSystemLoader(str(template_dir)),
+            autoescape=True,
+        )
+
+    def render(self, session: Session) -> str:
+        template = self._env.get_template("export.html")
+        return template.render(session=session.to_dict())
+
+
+register_renderer(HtmlRenderer())
