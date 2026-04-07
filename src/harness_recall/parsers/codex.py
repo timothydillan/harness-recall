@@ -15,6 +15,32 @@ class CodexParser(BaseParser):
     default_paths = ["~/.codex/sessions/"]
     file_pattern = "**/*.jsonl"
 
+    _session_titles: dict[str, str] | None = None
+
+    def _load_session_titles(self) -> dict[str, str]:
+        if self._session_titles is not None:
+            return self._session_titles
+        index_path = Path.home() / ".codex" / "session_index.jsonl"
+        titles: dict[str, str] = {}
+        if index_path.exists():
+            for line in index_path.read_bytes().splitlines():
+                line = line.strip()
+                if line:
+                    try:
+                        entry = orjson.loads(line)
+                        session_id = entry.get("id")
+                        thread_name = entry.get("thread_name")
+                        if session_id and thread_name:
+                            titles[session_id] = thread_name
+                    except Exception:
+                        pass
+        CodexParser._session_titles = titles
+        return titles
+
+    def _get_session_title(self, session_id: str) -> str | None:
+        titles = self._load_session_titles()
+        return titles.get(session_id)
+
     def parse(self, file_path: Path) -> Session:
         lines = file_path.read_bytes().split(b"\n")
         events = []
@@ -176,8 +202,9 @@ class CodexParser(BaseParser):
             agent_role=agent_role,
             turns=turns,
         )
-        # Auto-generate title
-        session.title = session.generate_title()
+        # Use session_index.jsonl title if available, otherwise auto-generate
+        title = self._get_session_title(session_id)
+        session.title = title or session.generate_title()
         return session
 
 

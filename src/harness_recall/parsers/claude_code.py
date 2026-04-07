@@ -167,6 +167,26 @@ class ClaudeCodeParser(BaseParser):
         if started_at is None:
             started_at = datetime.now(timezone.utc)
 
+        parent_session_id = None
+        agent_name = None
+        agent_role = None
+
+        # Detect subagent sessions from path structure: .../subagents/agent-{id}.jsonl
+        file_parts = file_path.parts
+        if 'subagents' in file_parts:
+            subagents_idx = file_parts.index('subagents')
+            if subagents_idx > 0:
+                parent_session_id = file_parts[subagents_idx - 1]
+            stem = file_path.stem  # e.g., "agent-a1f2e433790572b52"
+            if stem.startswith("agent-"):
+                agent_name = stem
+
+        # Check for .meta.json alongside the JSONL
+        meta_path = file_path.with_suffix('.meta.json')
+        if meta_path.exists():
+            meta = json.loads(meta_path.read_text())
+            agent_role = meta.get("agentType")
+
         session = Session(
             id=session_id or file_path.stem,
             source="claude-code",
@@ -182,9 +202,9 @@ class ClaudeCodeParser(BaseParser):
             git_commit=None,
             git_repo_url=None,
             title=None,
-            parent_session_id=None,
-            agent_name=None,
-            agent_role=None,
+            parent_session_id=parent_session_id,
+            agent_name=agent_name,
+            agent_role=agent_role,
             turns=turns,
         )
         session.title = session.generate_title()

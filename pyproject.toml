@@ -39,6 +39,10 @@ dev = [
     "pytest-cov>=4.0",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/harness_recall"]
+artifacts = ["src/harness_recall/templates/*.html"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

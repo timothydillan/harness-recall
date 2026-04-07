@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import re
 from pathlib import Path
 
 import click
@@ -119,7 +120,14 @@ def show(session_id, full, turns, config_dir):
 
     session = index.get_session(session_id)
     if not session:
-        console.print(f"[red]Session not found: {session_id}[/red]")
+        matches = index.find_sessions_by_prefix(session_id)
+        if matches:
+            console.print(f"[yellow]Ambiguous prefix '{session_id}' matches {len(matches)} sessions:[/yellow]")
+            for m in matches:
+                console.print(f"  {m['id']}  {m['source']}  {m['title'] or ''}")
+            console.print("[yellow]Please be more specific.[/yellow]")
+        else:
+            console.print(f"[red]Session not found: {session_id}[/red]")
         raise SystemExit(1)
 
     turn_rows = index.get_session_turns(session["id"])
@@ -175,7 +183,14 @@ def export(session_id, fmt, output_dir, export_all, source, config_dir):
     else:
         session_meta = index.get_session(session_id)
         if not session_meta:
-            console.print(f"[red]Session not found: {session_id}[/red]")
+            matches = index.find_sessions_by_prefix(session_id)
+            if matches:
+                console.print(f"[yellow]Ambiguous prefix '{session_id}' matches {len(matches)} sessions:[/yellow]")
+                for m in matches:
+                    console.print(f"  {m['id']}  {m['source']}  {m['title'] or ''}")
+                console.print("[yellow]Please be more specific.[/yellow]")
+            else:
+                console.print(f"[red]Session not found: {session_id}[/red]")
             raise SystemExit(1)
         parsers = get_all_parsers()
         filepath = _export_one(session_meta, parsers, renderer, out_dir)
@@ -192,7 +207,8 @@ def _export_one(session_meta, parsers, renderer, out_dir):
     session = parser.parse(source_file)
     content = renderer.render(session)
     safe_id = session.id[:8]
-    filename = f"{safe_id}-{session.source}{renderer.file_extension}"
+    title_slug = re.sub(r'[^a-z0-9]+', '-', (session.title or session.source).lower()).strip('-')[:50]
+    filename = f"{safe_id}-{title_slug}{renderer.file_extension}"
     filepath = out_dir / filename
     filepath.write_text(content, encoding="utf-8")
     return filepath

@@ -174,14 +174,12 @@ Parser contributions are welcome. See `docs/adding-a-parser.md` for a full walkt
 harness-recall auto-detects `~/.codex/sessions/` and `~/.claude/projects/` on first run. Override paths or add custom sources in `~/.harness-recall/config.toml`:
 
 ```toml
-[sources.codex]
-paths = ["/data/codex-sessions/"]
-
-[sources.claude-code]
-paths = ["~/.claude/projects/", "/mnt/backup/claude/"]
+[sources]
+codex = ["/custom/codex/path"]
+claude-code = ["/custom/claude/path"]
 
 [index]
-db_path = "~/.harness-recall/index.db"
+db_path = "/custom/index.db"
 ```
 
 ## Contributing

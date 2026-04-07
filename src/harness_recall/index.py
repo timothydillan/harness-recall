@@ -10,9 +10,10 @@ class SessionIndex:
     def __init__(self, db_path: Path | str):
         self.db_path = str(db_path)
         self._init_db()
+        self._conn = self._create_connection()
 
     def _init_db(self):
-        conn = self._connect()
+        conn = self._create_connection()
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY,
@@ -83,15 +84,21 @@ class SessionIndex:
         conn.commit()
         conn.close()
 
-    def _connect(self) -> sqlite3.Connection:
+    def _create_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
+    def _get_conn(self) -> sqlite3.Connection:
+        return self._conn
+
+    def close(self) -> None:
+        self._conn.close()
+
     def add_session(self, session: Session) -> None:
-        conn = self._connect()
+        conn = self._get_conn()
         # Remove existing session data if re-indexing
         self._remove_session_data(conn, session.id)
 
@@ -136,26 +143,24 @@ class SessionIndex:
                 """, (tc.id, turn.id, session.id, tc.name, tc.arguments, tc.output))
 
         conn.commit()
-        conn.close()
 
     def remove_session(self, session_id: str) -> None:
-        conn = self._connect()
+        conn = self._get_conn()
         self._remove_session_data(conn, session_id)
         conn.commit()
-        conn.close()
 
     def _remove_session_data(self, conn: sqlite3.Connection, session_id: str) -> None:
         # Remove FTS entries for turns
-        rows = conn.execute("SELECT rowid FROM turns WHERE session_id = ?", (session_id,)).fetchall()
+        rows = conn.execute("SELECT rowid, content FROM turns WHERE session_id = ?", (session_id,)).fetchall()
         for row in rows:
-            conn.execute("INSERT INTO turns_fts(turns_fts, rowid, content) VALUES('delete', ?, '')", (row[0],))
+            conn.execute("INSERT INTO turns_fts(turns_fts, rowid, content) VALUES('delete', ?, ?)", (row[0], row[1] or ""))
         conn.execute("DELETE FROM tool_calls WHERE session_id = ?", (session_id,))
         conn.execute("DELETE FROM turns WHERE session_id = ?", (session_id,))
         conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
 
     def list_sessions(self, source: str | None = None, after: str | None = None,
                       project: str | None = None, limit: int = 25) -> list[dict]:
-        conn = self._connect()
+        conn = self._get_conn()
         query = "SELECT * FROM sessions WHERE 1=1"
         params: list = []
         if source:
@@ -170,12 +175,11 @@ class SessionIndex:
         query += " ORDER BY started_at DESC LIMIT ?"
         params.append(limit)
         rows = conn.execute(query, params).fetchall()
-        conn.close()
         return [dict(r) for r in rows]
 
     def search(self, query: str, source: str | None = None,
                tool: str | None = None, limit: int = 25) -> list[dict]:
-        conn = self._connect()
+        conn = self._get_conn()
         sql = """
             SELECT t.session_id, t.content, t.role, t.timestamp,
                    s.title, s.source, s.started_at, s.model,
@@ -196,54 +200,62 @@ class SessionIndex:
         sql += " ORDER BY rank LIMIT ?"
         params.append(limit)
         rows = conn.execute(sql, params).fetchall()
-        conn.close()
         return [dict(r) for r in rows]
 
     def get_session(self, session_id: str) -> dict | None:
-        conn = self._connect()
-        row = conn.execute("SELECT * FROM sessions WHERE id = ? OR id LIKE ?",
-                           (session_id, f"{session_id}%")).fetchone()
-        conn.close()
-        return dict(row) if row else None
+        conn = self._get_conn()
+        # First try exact match
+        row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+        if row:
+            return dict(row)
+        # Then try prefix match — only return if unambiguous (exactly one match)
+        rows = conn.execute("SELECT * FROM sessions WHERE id LIKE ?",
+                            (f"{session_id}%",)).fetchall()
+        if len(rows) == 1:
+            return dict(rows[0])
+        return None
+
+    def find_sessions_by_prefix(self, prefix: str) -> list[dict]:
+        """Return all sessions whose ID starts with the given prefix."""
+        conn = self._get_conn()
+        rows = conn.execute("SELECT * FROM sessions WHERE id LIKE ?",
+                            (f"{prefix}%",)).fetchall()
+        return [dict(r) for r in rows]
 
     def get_session_turns(self, session_id: str) -> list[dict]:
-        conn = self._connect()
+        conn = self._get_conn()
         rows = conn.execute(
             "SELECT * FROM turns WHERE session_id = ? ORDER BY sequence_num",
             (session_id,)
         ).fetchall()
-        conn.close()
         return [dict(r) for r in rows]
 
     def get_tool_calls(self, session_id: str) -> list[dict]:
-        conn = self._connect()
+        conn = self._get_conn()
         rows = conn.execute(
             "SELECT * FROM tool_calls WHERE session_id = ? ORDER BY rowid",
             (session_id,)
         ).fetchall()
-        conn.close()
         return [dict(r) for r in rows]
 
     def needs_reindex(self, source_file: str, current_mtime: float) -> bool:
-        conn = self._connect()
+        conn = self._get_conn()
         row = conn.execute(
             "SELECT source_file_mtime FROM sessions WHERE source_file = ?",
             (source_file,)
         ).fetchone()
-        conn.close()
         if row is None:
             return True
         return row[0] != current_mtime
 
     def stats(self) -> dict:
-        conn = self._connect()
+        conn = self._get_conn()
         total = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
         turns = conn.execute("SELECT COUNT(*) FROM turns").fetchone()[0]
         sources = {}
         for row in conn.execute("SELECT source, COUNT(*) FROM sessions GROUP BY source"):
             sources[row[0]] = row[1]
         db_size = Path(self.db_path).stat().st_size if Path(self.db_path).exists() else 0
-        conn.close()
         return {
             "total_sessions": total,
             "total_turns": turns,
