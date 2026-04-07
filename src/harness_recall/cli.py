@@ -40,28 +40,55 @@ def _get_index(config: Config) -> SessionIndex:
     return SessionIndex(config.db_path)
 
 
-def _auto_index(config: Config, index: SessionIndex) -> int:
+def _auto_index(config: Config, index: SessionIndex, show_progress: bool = True) -> int:
     """Index new/changed sessions. Returns count of newly indexed sessions."""
     parsers = get_all_parsers()
-    count = 0
+
+    # First pass: collect files that need indexing
+    to_index: list[tuple[str, object, Path]] = []
     for name, parser in parsers.items():
         if name in config.source_paths:
             paths = config.source_paths[name]
         else:
             paths = parser.default_paths
-        # Empty list means no paths configured — skip this parser
         if not paths:
             continue
         files = parser.discover(paths=paths)
         for f in files:
             if index.needs_reindex(str(f), f.stat().st_mtime):
+                to_index.append((name, parser, f))
+
+    if not to_index:
+        return 0
+
+    count = 0
+    if show_progress and console.is_terminal and len(to_index) > 5:
+        from rich.progress import Progress, BarColumn, TextColumn, MofNCompleteColumn
+        with Progress(
+            TextColumn("[dim]Indexing..."),
+            BarColumn(),
+            MofNCompleteColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("", total=len(to_index))
+            for name, parser, f in to_index:
                 try:
                     sessions = parser.parse_all(f)
                     for session in sessions:
                         index.add_session(session)
                     count += len(sessions)
-                except Exception as e:
-                    console.print(f"[dim red]Skipped {f.name}: {e}[/dim red]")
+                except Exception:
+                    pass  # silently skip on first index to avoid wall of errors
+                progress.advance(task)
+    else:
+        for name, parser, f in to_index:
+            try:
+                sessions = parser.parse_all(f)
+                for session in sessions:
+                    index.add_session(session)
+                count += len(sessions)
+            except Exception:
+                pass
     return count
 
 

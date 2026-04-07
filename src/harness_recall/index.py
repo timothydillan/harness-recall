@@ -136,11 +136,13 @@ class SessionIndex:
             rowid = conn.execute("SELECT rowid FROM turns WHERE id = ?", (turn.id,)).fetchone()[0]
             conn.execute("INSERT INTO turns_fts(rowid, content) VALUES (?, ?)", (rowid, turn.content or ""))
 
-            for tc in turn.tool_calls:
+            for j, tc in enumerate(turn.tool_calls):
+                # Make tool call ID unique by prefixing with turn ID
+                unique_tc_id = f"{turn.id}:{tc.id or j}"
                 conn.execute("""
-                    INSERT INTO tool_calls (id, turn_id, session_id, name, arguments, output)
+                    INSERT OR REPLACE INTO tool_calls (id, turn_id, session_id, name, arguments, output)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (tc.id, turn.id, session.id, tc.name, tc.arguments, tc.output))
+                """, (unique_tc_id, turn.id, session.id, tc.name, tc.arguments, tc.output))
 
         conn.commit()
 
