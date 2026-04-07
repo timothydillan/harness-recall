@@ -221,19 +221,19 @@ class ExportModal(ModalScreen[str | None]):
         with Container(id="export-dialog"):
             yield Label("Export Format", id="export-title")
             yield RadioSet(
-                RadioButton("Markdown", value=True, id="fmt-markdown"),
+                RadioButton("Markdown", id="fmt-markdown"),
                 RadioButton("HTML", id="fmt-html"),
                 RadioButton("JSON", id="fmt-json"),
                 id="format-picker",
             )
-            yield Label("Select a format  Esc to cancel", id="export-hint")
+            yield Label("Enter to select  Esc to cancel", id="export-hint")
 
     def action_cancel(self) -> None:
         self.dismiss(None)
 
     @on(RadioSet.Changed, "#format-picker")
     def on_format_changed(self, event: RadioSet.Changed) -> None:
-        """Dismiss immediately when user selects a format."""
+        """Dismiss when user selects a format with Enter."""
         if event.pressed is not None:
             btn_id = event.pressed.id or ""
             fmt = self.FMT_MAP.get(btn_id, "markdown")
